@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useVibration } from "@baditaflorin/mesh-common";
 import { createRoomSync } from "../sync/yjsRoom";
 import { createClockSync } from "../sync/clockSync";
 import { maybeFetchTurnCredentials } from "../sync/iceConfig";
@@ -159,6 +160,7 @@ export function Pomodoro({ roomId, focusMin, breakMin, rounds }: Props) {
 
   // Vibration on phase change
   const lastPhaseRef = useRef<string | null>(null);
+  const haptic = useVibration();
   useEffect(() => {
     if (!phase) {
       lastPhaseRef.current = null;
@@ -166,9 +168,7 @@ export function Pomodoro({ roomId, focusMin, breakMin, rounds }: Props) {
     }
     const key = `${phase.kind}-${phase.round}`;
     if (lastPhaseRef.current !== null && lastPhaseRef.current !== key) {
-      if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-        navigator.vibrate([120, 60, 120]);
-      }
+      haptic.vibrate([120, 60, 120]);
     }
     lastPhaseRef.current = key;
   }, [phase?.kind, phase?.round]); // eslint-disable-line react-hooks/exhaustive-deps
