@@ -1,6 +1,9 @@
 export const appConfig = {
   appName: "mesh-pomodoro-room",
   storagePrefix: "mesh-pomodoro-room",
+  description:
+    "Shared pomodoro timer for the room — focus + break cycles stay in sync across every phone.",
+  accentHex: "#f5a524",
   version: __APP_VERSION__,
   commit: __GIT_COMMIT__,
   repositoryUrl: "https://github.com/baditaflorin/mesh-pomodoro-room",
