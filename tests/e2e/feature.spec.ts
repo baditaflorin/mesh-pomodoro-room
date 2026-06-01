@@ -58,3 +58,52 @@ test("starting a session on peer A drives the synced timer on peer B", async ({
     await cleanup();
   }
 });
+
+/**
+ * Second advertised cross-peer action: "During focus, tap done early or stuck
+ * to give the room a quiet, anonymous signal — no names, just counts."
+ *
+ * The per-peer status (`focused | done | stuck | breaking`) lives in Yjs
+ * AWARENESS, not in the durable session map. When peer A taps "stuck", that
+ * status must cross the mesh so peer B's aggregate — which peer B computes from
+ * its OWN awareness states — shows "1 stuck".
+ *
+ * Load-bearing: if the status only ever lived in peer A's local React state and
+ * never reached the awareness publish, peer B's "stuck" count would stay at 0
+ * and this assertion would time out.
+ */
+test("a 'stuck' signal on peer A shows up in peer B's anonymous aggregate", async ({
+  browser,
+  baseURL,
+}) => {
+  const { a, b, cleanup } = await openTwoPeers(browser, baseURL ?? "", { storagePrefix });
+  try {
+    await connect(a);
+    await connect(b);
+
+    // Start a session so both peers are in the running focus phase (the
+    // "stuck"/"done" controls only render during focus).
+    await a.getByRole("button", { name: /start round 1/i }).click();
+    await expect(a.locator(".pomo-phase-label")).toHaveText(/focus/i);
+    await expect(b.locator(".pomo-phase-label")).toHaveText(/focus/i);
+
+    // Baseline: nobody is stuck yet on peer B's aggregate.
+    await expect(b.locator(".pomo-stat-stuck")).toHaveText(/0 stuck/i);
+
+    // Peer A raises the anonymous "stuck" signal.
+    await a.getByRole("button", { name: /stuck/i }).click();
+    await expect(a.locator(".pomo-stuck")).toHaveClass(/\bon\b/);
+
+    // THE LOAD-BEARING CROSS-PEER ASSERTION: peer B, which never touched a
+    // control, sees the stuck count rise — the anonymous signal crossed the
+    // mesh via awareness, with no name attached.
+    await expect(b.locator(".pomo-stat-stuck")).toHaveText(/1 stuck/i);
+
+    // Clearing the signal on A drains it back out on B — the signal is live,
+    // not a one-shot.
+    await a.getByRole("button", { name: /stuck/i }).click();
+    await expect(b.locator(".pomo-stat-stuck")).toHaveText(/0 stuck/i);
+  } finally {
+    await cleanup();
+  }
+});
